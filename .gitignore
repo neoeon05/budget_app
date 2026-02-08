@@ -1,0 +1,4 @@
+transactions.db
+*.db
+__pycache__/
+.streamlit/
