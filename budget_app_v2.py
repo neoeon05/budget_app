@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import streamlit as st
 import pandas as pd
 import sqlite3
@@ -1501,7 +1500,7 @@ if not st.session_state.logged_in:
     login_page()
 else:
     main_app()
-=======
+
 import streamlit as st
 import pandas as pd
 import sqlite3
@@ -1710,4 +1709,4 @@ elif menu == "FY Summary":
     summary["Remaining"] = summary.get("receipt", 0) - summary.get("expenditure", 0)
 
     st.dataframe(summary)
->>>>>>> e04f60cabd60792d0f3d2e446337621ef9d0b4d5
+
