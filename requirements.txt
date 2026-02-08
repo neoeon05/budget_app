@@ -1,10 +1,5 @@
-<<<<<<< HEAD
 streamlit
 pandas
 plotly
 openpyxl
 reportlab
-=======
-streamlit
-pandas
->>>>>>> e04f60cabd60792d0f3d2e446337621ef9d0b4d5
