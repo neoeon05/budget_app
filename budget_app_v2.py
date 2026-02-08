@@ -687,7 +687,9 @@ def login_page():
                             st.session_state.user = user
                             update_last_login(user['id'])
                             st.success(f"Welcome, {user['full_name']}!")
-                            st.experimental_rerun()
+                            st.success("Logged in successfully")
+                            st.stop()
+
                         else:
                             st.error("Invalid username or password")
                     else:
@@ -753,7 +755,9 @@ def main_app():
     if st.sidebar.button("Logout"):
         st.session_state.logged_in = False
         st.session_state.user = None
-        st.experimental_rerun()
+        st.success("Logged out successfully")
+        st.stop()
+
     
     # Load data
     df = load_data(st.session_state.user['id'], is_admin)
@@ -848,7 +852,8 @@ def main_app():
                     st.session_state.user['id']
                 )
                 st.success("✅ Record added successfully")
-                st.experimental_rerun()
+                st.stop()
+
 
     # ---------------- VIEW / EDIT / DELETE ----------------
     elif menu == "📋 View / Edit / Delete":
@@ -904,7 +909,7 @@ def main_app():
                 if not presets.empty:
                     preset_choice = st.selectbox("Load Preset", [""] + presets['preset_name'].tolist())
                     if preset_choice and st.button("📂 Load Preset"):
-                        st.experimental_rerun()
+                        st.stop()
 
         # Apply filters
         filters = {
@@ -982,12 +987,14 @@ def main_app():
                         st.session_state.user['id']
                     )
                     st.success("Record updated")
-                    st.experimental_rerun()
+                    st.stop()
+
 
                 if col_d.button("🗑️ Delete Record"):
                     delete_record(record_id, st.session_state.user['id'], is_admin, st.session_state.user['id'])
                     st.warning("Record deleted")
-                    st.experimental_rerun()
+                    st.stop()
+
 
     # ---------------- MONTHLY SUMMARY ----------------
     elif menu == "📅 Monthly Summary":
@@ -1200,7 +1207,7 @@ def main_app():
                     if set_budget_limit(st.session_state.user['id'], budget_head, 
                                        monthly_limit, yearly_limit, alert_threshold):
                         st.success("Budget saved successfully!")
-                        st.experimental_rerun()
+                        st.stop()
                     else:
                         st.error("Failed to save budget")
         
@@ -1335,7 +1342,7 @@ def main_app():
                                     st.error(f"Error importing row: {e}")
                             
                             st.success(f"Successfully imported {imported} records!")
-                            st.experimental_rerun()
+                            st.stop()
                 except Exception as e:
                     st.error(f"Error reading file: {e}")
         
@@ -1474,7 +1481,7 @@ def main_app():
                         )
                         if success:
                             st.success(message)
-                            st.experimental_rerun()
+                            st.stop()
                         else:
                             st.error(message)
                     else:
@@ -1493,7 +1500,7 @@ def main_app():
                 user_id = users_df[users_df['username'] == user_to_delete]['id'].iloc[0]
                 delete_user(user_id)
                 st.success(f"User '{user_to_delete}' deleted successfully")
-                st.experimental_rerun()
+                st.stop()
 
 # ---------------- MAIN ----------------
 if not st.session_state.logged_in:
