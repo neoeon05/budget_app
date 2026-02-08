@@ -7,8 +7,10 @@ import secrets
 import json
 import io
 import shutil
+import os
 from pathlib import Path
 
+# --- MUST BE THE VERY FIRST STREAMLIT COMMAND ---
 st.set_page_config(page_title="Receipt & Expenditure Tracker", layout="wide", page_icon="💰")
 
 # Try to import optional dependencies
@@ -18,7 +20,7 @@ try:
     PLOTLY_AVAILABLE = True
 except ImportError:
     PLOTLY_AVAILABLE = False
-    st.warning("⚠️ Install plotly for charts: pip install plotly")
+    # Warning removed to prevent "set_page_config" conflict
 
 try:
     from reportlab.lib.pagesizes import letter, A4
@@ -36,8 +38,8 @@ DB_FILE = "transactions.db"
 BACKUP_DIR = "backups"
 HEADS = ["Head 1", "Head 2", "Head 3", "Head 4", "Head 5"]
 
-# Create backup directory
-Path(BACKUP_DIR).mkdir(exist_ok=True)
+# Create backup directory safely
+os.makedirs(BACKUP_DIR, exist_ok=True)
 
 # ---------------- SECURITY FUNCTIONS ----------------
 def hash_password(password, salt=None):
@@ -153,7 +155,7 @@ def create_tables():
 def backup_database():
     """Create a backup of the database"""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    backup_file = f"{BACKUP_DIR}/transactions_backup_{timestamp}.db"
+    backup_file = os.path.join(BACKUP_DIR, f"transactions_backup_{timestamp}.db")
     shutil.copy2(DB_FILE, backup_file)
     return backup_file
 
@@ -614,13 +616,11 @@ def create_trend_chart(df, title):
     df['month'] = df['date'].dt.to_period('M').astype(str)
     monthly = df.groupby(['month', 'type'])['amount'].sum().unstack(fill_value=0)
     
-    # --- FIX STARTS HERE ---
     # Ensure both columns exist, filling with 0.0 if missing
     if 'receipt' not in monthly.columns:
         monthly['receipt'] = 0.0
     if 'expenditure' not in monthly.columns:
         monthly['expenditure'] = 0.0
-    # --- FIX ENDS HERE ---
     
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=monthly.index, y=monthly['receipt'], 
@@ -665,12 +665,11 @@ if 'user' not in st.session_state:
 # ---------------- LOGIN PAGE ----------------
 def login_page():
     st.title("🔐 Login to Budget Tracker")
+    st.markdown("---")
     
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        st.markdown("### Welcome Back!")
-        
         tab1, tab2 = st.tabs(["Login", "Register"])
         
         with tab1:
@@ -687,9 +686,7 @@ def login_page():
                             st.session_state.user = user
                             update_last_login(user['id'])
                             st.success(f"Welcome, {user['full_name']}!")
-                            st.success("Logged in successfully")
-                            st.stop()
-
+                            st.rerun()  # UPDATED FOR STREAMLIT CLOUD
                         else:
                             st.error("Invalid username or password")
                     else:
@@ -719,7 +716,7 @@ def login_page():
                         else:
                             st.error(message)
         
-        st.info("**Default Admin Credentials:**\nUsername: `admin` | Password: `admin123`\n\n*Please change the password after first login*")
+        st.info("**Default Admin Credentials:**\nUsername: `admin` | Password: `admin123`")
 
 # ---------------- MAIN APP ----------------
 def main_app():
@@ -752,12 +749,24 @@ def main_app():
     
     menu = st.sidebar.radio("Go to", menu_options)
     
+    # --- CLOUD PERSISTENCE HELPER ---
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### ☁️ Cloud Storage")
+    if os.path.exists(DB_FILE):
+        with open(DB_FILE, "rb") as fp:
+            st.sidebar.download_button(
+                label="📥 Download Database",
+                data=fp,
+                file_name=f"transactions_backup_{datetime.now().strftime('%Y%m%d')}.db",
+                mime="application/x-sqlite3",
+                help="Streamlit Cloud resets data on reboot. Download this to save your work!"
+            )
+    # --------------------------------
+    
     if st.sidebar.button("Logout"):
         st.session_state.logged_in = False
         st.session_state.user = None
-        st.success("Logged out successfully")
-        st.stop()
-
+        st.rerun()  # UPDATED FOR STREAMLIT CLOUD
     
     # Load data
     df = load_data(st.session_state.user['id'], is_admin)
@@ -852,8 +861,7 @@ def main_app():
                     st.session_state.user['id']
                 )
                 st.success("✅ Record added successfully")
-                st.stop()
-
+                st.rerun() # UPDATED
 
     # ---------------- VIEW / EDIT / DELETE ----------------
     elif menu == "📋 View / Edit / Delete":
@@ -909,7 +917,7 @@ def main_app():
                 if not presets.empty:
                     preset_choice = st.selectbox("Load Preset", [""] + presets['preset_name'].tolist())
                     if preset_choice and st.button("📂 Load Preset"):
-                        st.stop()
+                        st.rerun() # UPDATED
 
         # Apply filters
         filters = {
@@ -987,14 +995,12 @@ def main_app():
                         st.session_state.user['id']
                     )
                     st.success("Record updated")
-                    st.stop()
-
+                    st.rerun() # UPDATED
 
                 if col_d.button("🗑️ Delete Record"):
                     delete_record(record_id, st.session_state.user['id'], is_admin, st.session_state.user['id'])
                     st.warning("Record deleted")
-                    st.stop()
-
+                    st.rerun() # UPDATED
 
     # ---------------- MONTHLY SUMMARY ----------------
     elif menu == "📅 Monthly Summary":
@@ -1207,7 +1213,7 @@ def main_app():
                     if set_budget_limit(st.session_state.user['id'], budget_head, 
                                        monthly_limit, yearly_limit, alert_threshold):
                         st.success("Budget saved successfully!")
-                        st.stop()
+                        st.rerun() # UPDATED
                     else:
                         st.error("Failed to save budget")
         
@@ -1342,12 +1348,13 @@ def main_app():
                                     st.error(f"Error importing row: {e}")
                             
                             st.success(f"Successfully imported {imported} records!")
-                            st.stop()
+                            st.rerun() # UPDATED
                 except Exception as e:
                     st.error(f"Error reading file: {e}")
         
         with tab3:
             st.subheader("Database Backup")
+            st.info("Note: On Streamlit Cloud, file system is temporary. Please use the Download button in sidebar to save your data locally.")
             
             col1, col2 = st.columns(2)
             
@@ -1356,15 +1363,13 @@ def main_app():
                     backup_file = backup_database()
                     st.success(f"Backup created: {backup_file}")
             
-            with col2:
-                st.info("💡 Backups are stored in the 'backups' folder")
-            
             # List existing backups
-            backup_files = sorted(Path(BACKUP_DIR).glob("*.db"), reverse=True)
-            if backup_files:
-                st.subheader("Available Backups")
-                for backup in backup_files[:10]:  # Show last 10 backups
-                    st.text(backup.name)
+            if os.path.exists(BACKUP_DIR):
+                backup_files = sorted(Path(BACKUP_DIR).glob("*.db"), reverse=True)
+                if backup_files:
+                    st.subheader("Available Backups")
+                    for backup in backup_files[:5]:
+                        st.text(backup.name)
 
     # ---------------- AUDIT TRAIL ----------------
     elif menu == "🔍 Audit Trail":
@@ -1481,7 +1486,7 @@ def main_app():
                         )
                         if success:
                             st.success(message)
-                            st.stop()
+                            st.rerun() # UPDATED
                         else:
                             st.error(message)
                     else:
@@ -1500,7 +1505,7 @@ def main_app():
                 user_id = users_df[users_df['username'] == user_to_delete]['id'].iloc[0]
                 delete_user(user_id)
                 st.success(f"User '{user_to_delete}' deleted successfully")
-                st.stop()
+                st.rerun() # UPDATED
 
 # ---------------- MAIN ----------------
 if not st.session_state.logged_in:
